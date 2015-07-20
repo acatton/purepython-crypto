@@ -30,13 +30,6 @@ def plus(a, b):
     return (a + b) % OF
 
 
-def plus3(a, b, c):
-    """
-    Add three 32 bit integers
-    """
-    return (a + b + c) % OF
-
-
 def plus4(a, b, c, d):
     """
     Add four 32 bit integers
@@ -55,6 +48,20 @@ def rot(n, s):
 
 def limit_length(l):
     return l % (1 << 64)  # Length can't be greater than 64
+
+
+SHIFT_TABLE = (
+    3, 7, 11, 19, 3, 7, 11, 19, 3, 7, 11, 19, 3, 7, 11, 19, 3, 5, 9, 13, 3, 5,
+    9, 13, 3, 5, 9, 13, 3, 5, 9, 13, 3, 9, 11, 15, 3, 9, 11, 15, 3, 9, 11, 15,
+    3, 9, 11, 15,
+)
+
+
+K_TABLE = (
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 4, 8, 12, 1, 5, 9,
+    13, 2, 6, 10, 14, 3, 7, 11, 15, 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3,
+    11, 7, 15,
+)
 
 
 class MD4:
@@ -119,101 +126,26 @@ class MD4:
         block = struct.unpack('<' + 'I' * 16, raw_block)
         assert len(block) == 16
 
-        def f(x, y, z):
-            return (x & y) | ((~x) & z)
-
-        def g(x, y, z):
-            return (x & y) | (x & z) | (y & z)
-
-        def h(x, y, z):
-            return (x ^ y ^ z)
-
-        def ff(a, b, c, d, k, s):
-            return rot(plus3(a, f(b, c, d), block[k]), s)
-
-        def gg(a, b, c, d, k, s):
-            return rot(plus4(a, g(b, c, d), block[k], 0x5A827999), s)
-
-        def hh(a, b, c, d, k, s):
-            return rot(plus4(a, h(b, c, d), block[k], 0x6ED9EBA1), s)
-
-        def round1(a, b, c, d):
-            a = ff(a, b, c, d, 0, 3)
-            d = ff(d, a, b, c, 1, 7)
-            c = ff(c, d, a, b, 2, 11)
-            b = ff(b, c, d, a, 3, 19)
-
-            a = ff(a, b, c, d, 4, 3)
-            d = ff(d, a, b, c, 5, 7)
-            c = ff(c, d, a, b, 6, 11)
-            b = ff(b, c, d, a, 7, 19)
-
-            a = ff(a, b, c, d, 8, 3)
-            d = ff(d, a, b, c, 9, 7)
-            c = ff(c, d, a, b, 10, 11)
-            b = ff(b, c, d, a, 11, 19)
-
-            a = ff(a, b, c, d, 12, 3)
-            d = ff(d, a, b, c, 13, 7)
-            c = ff(c, d, a, b, 14, 11)
-            b = ff(b, c, d, a, 15, 19)
-
-            return a, b, c, d
-
-        def round2(a, b, c, d):
-            a = gg(a, b, c, d, 0, 3)
-            d = gg(d, a, b, c, 4, 5)
-            c = gg(c, d, a, b, 8, 9)
-            b = gg(b, c, d, a, 12, 13)
-
-            a = gg(a, b, c, d, 1, 3)
-            d = gg(d, a, b, c, 5, 5)
-            c = gg(c, d, a, b, 9, 9)
-            b = gg(b, c, d, a, 13, 13)
-
-            a = gg(a, b, c, d, 2, 3)
-            d = gg(d, a, b, c, 6, 5)
-            c = gg(c, d, a, b, 10, 9)
-            b = gg(b, c, d, a, 14, 13)
-
-            a = gg(a, b, c, d, 3, 3)
-            d = gg(d, a, b, c, 7, 5)
-            c = gg(c, d, a, b, 11, 9)
-            b = gg(b, c, d, a, 15, 13)
-
-            return a, b, c, d
-
-        def round3(a, b, c, d):
-            a = hh(a, b, c, d, 0, 3)
-            d = hh(d, a, b, c, 8, 9)
-            c = hh(c, d, a, b, 4, 11)
-            b = hh(b, c, d, a, 12, 15)
-
-            a = hh(a, b, c, d, 2, 3)
-            d = hh(d, a, b, c, 10, 9)
-            c = hh(c, d, a, b, 6, 11)
-            b = hh(b, c, d, a, 14, 15)
-
-            a = hh(a, b, c, d, 1, 3)
-            d = hh(d, a, b, c, 9, 9)
-            c = hh(c, d, a, b, 5, 11)
-            b = hh(b, c, d, a, 13, 15)
-
-            a = hh(a, b, c, d, 3, 3)
-            d = hh(d, a, b, c, 11, 9)
-            c = hh(c, d, a, b, 7, 11)
-            b = hh(b, c, d, a, 15, 15)
-
-            return a, b, c, d
-
         a = self.a
         b = self.b
         c = self.c
         d = self.d
 
-        a, b, c, d = round1(a, b, c, d)
-        a, b, c, d = round2(a, b, c, d)
-        a, b, c, d = round3(a, b, c, d)
+        for i in range(48):
+            if i < 16:
+                f = (b & c) | ((~b) & d)
+                val = 0
+            elif i < 32:
+                f = (b & c) | (b & d) | (c & d)
+                val = 0x5a827999
+            else:
+                f = (b ^ c ^ d)
+                val = 0x6ed9eba1
+
+            k = K_TABLE[i]
+            s = SHIFT_TABLE[i]
+            a = rot(plus4(a, f, block[k], val), s)
+            a, b, c, d = d, a, b, c
 
         self.a = plus(self.a, a)
         self.b = plus(self.b, b)
